@@ -1,13 +1,17 @@
 package com.example.newssearchwithemotion;
 
 import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
+import android.widget.ListView;
 import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
@@ -25,14 +29,18 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String API_KEY = "xxxxxxxxxxxxxxxxxxxxxxx";
-    private final String API_TOKEN = "hf_xxxxxxxxxxxxxxxxxxxxxxxxx";
+    //region API KEYS
+    private static final String API_KEY = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+    private final String API_TOKEN = "hf_XXXXXXXXXXXXXXXXXXXXXXXX";
+    //endregion
+
     private static final String BASE_URL = "https://content.guardianapis.com/search?api-key=" + API_KEY + "&show-fields=body";
-    private static final int PAGE_SIZE = 15;
-    private static final int MAX_PAGES = 10;
+    private static final int PAGE_SIZE = 20;
+    private static final int MAX_PAGES = 20;
     EditText topicSearch;
     String topic;
     TextView articleList;
@@ -43,6 +51,11 @@ public class MainActivity extends AppCompatActivity {
     String tempEmotionList = "Emotion\n";
     Handler h;
     DisplayMetrics dm;
+    ArrayList<String> articleArrayList;
+    ArrayAdapter<String> arr;
+    ListView listView;
+    ArrayList<String> articleBodyArrayList;
+    ArrayList<String> titleArrayList;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,14 +64,19 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         topicSearch = findViewById(R.id.topicSearch);
+        listView = findViewById(R.id.itemList);
+        articleArrayList = new ArrayList<>();
+        articleBodyArrayList = new ArrayList<>();
+        titleArrayList = new ArrayList<>();
+        /*
         articleList = findViewById(R.id.titleList);
         topicList = findViewById(R.id.topicList);
         emotionList = findViewById(R.id.emotionList);
-
+        */
         dm = this.getResources().getDisplayMetrics();
-        articleList.setWidth(dm.widthPixels/5*3);
-        topicList.setWidth(dm.widthPixels/5);
-        emotionList.setWidth(dm.widthPixels/5);
+        //articleList.setWidth(dm.widthPixels/5*3);
+        //topicList.setWidth(dm.widthPixels/5);
+        //emotionList.setWidth(dm.widthPixels/5);
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -69,9 +87,12 @@ public class MainActivity extends AppCompatActivity {
         h = new Handler(){
             @Override
             public void handleMessage(Message msg){
+                /*
                 articleList.setText(tempArticleList);
                 topicList.setText(tempTopicList);
                 emotionList.setText(tempEmotionList);
+
+                 */
 
             }
         };
@@ -92,7 +113,7 @@ public class MainActivity extends AppCompatActivity {
 
                 topic = topic.trim();
                 boolean test = !topic.equalsIgnoreCase("");
-                if (!sectionName.equalsIgnoreCase(topic) && test && !sectionName.toUpperCase().contains(topic.toUpperCase()) && !title.toUpperCase().contains(topic.toUpperCase())) {
+                if (!sectionName.equalsIgnoreCase(topic) && test && !sectionName.toUpperCase().contains(topic.toUpperCase())) {
                     continue;
                 }
 
@@ -104,8 +125,9 @@ public class MainActivity extends AppCompatActivity {
 
                 emotion = detectEmotion(body.substring(0,300));
 
-                if (title.length()>20){
-                    title = title.substring(0,18) + "...";
+                titleArrayList.add(title);
+                if (title.length()>30){
+                    title = title.substring(0,28) + "...";
                 }
                 tempArticleList += title + "\n";
                 tempTopicList += sectionName + "\n";
@@ -114,6 +136,9 @@ public class MainActivity extends AppCompatActivity {
                     tempArticleList +="\n";
                     tempEmotionList += "\n";
                 }
+                articleArrayList.add(title + "   " + sectionName + "    " + emotion);
+                articleBodyArrayList.add(body);
+
             }
         } catch (Exception e) {
             Log.e("MainActivity", "Error parsing JSON", e);
@@ -149,6 +174,19 @@ public class MainActivity extends AppCompatActivity {
                             urlConnection.disconnect();
                         }
                     }
+                    arr = new ArrayAdapter<String>(MainActivity.this, androidx.appcompat.R.layout.support_simple_spinner_dropdown_item, articleArrayList);
+                    runOnUiThread(() -> listView.setAdapter(arr));
+
+                    listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                        @Override
+                        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                            Intent intent = new Intent(MainActivity.this, ArticleActivity.class);
+                            intent.putExtra("title", titleArrayList.get(position));
+                            intent.putExtra("text",articleBodyArrayList.get(position));
+                            startActivity(intent);
+                        }
+                    });
+
                 } catch (Exception e) {
                     Log.e("MainActivity", "Error fetching articles", e);
                 }
